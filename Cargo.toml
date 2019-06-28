@@ -6,3 +6,13 @@ edition = "2018"
 
 [dependencies]
 rand = "0.6.5"
+
+
+# Path Clarity in Rust 2018 edition
+#    https://doc.rust-lang.org/stable/edition-guide/rust-2018/module-system/path-clarity.html
+# * extern crate is no longer needed in 99% of circumstances.
+# * The crate keyword refers to the current crate.
+# * Paths may start with a crate name, even within submodules.
+# * Paths starting with :: must reference an external crate.
+# * A foo.rs and foo/ subdirectory may coexist; mod.rs is no longer needed when placing submodules in a subdirectory.
+# * Paths in use declarations work the same as other paths.
