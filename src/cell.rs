@@ -56,6 +56,7 @@ impl Cell {
 
 impl MineSweeperCell for Cell {
 
+
     fn reveal(&mut self) {
         self.state = CellState::Revealed;
     }
@@ -118,12 +119,12 @@ impl Display for Cell {
 }
 
 /// Debug will print the cells "kind". It essentially reveals the cell so that you can
-/// check if the mine counts are correct
+/// see the mined cells and also check if the mine counts are correct
 impl Debug for Cell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.kind {
             CellKind::Mine => MINE,
-            CellKind::Empty => self.adj_mine_count as char,
+            CellKind::Empty => (self.adj_mine_count + 48) as char,  // convert to ascii digit + 48
         };
         write!(f,"{}", cell_char)
     }

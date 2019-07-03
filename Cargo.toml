@@ -5,7 +5,7 @@ authors = ["strohs <strohs1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-rand = "0.6.5"
+rand = "0.7"
 
 
 # Path Clarity in Rust 2018 edition
