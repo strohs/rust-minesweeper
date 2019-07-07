@@ -6,9 +6,10 @@ use crate::minesweeper::{Game, MineSweeperGame};
 
 
 fn main() {
-    let mut g = Game::new(5, 5);
-    g.randomize_mine_locations();
+    let mut g = Game::new(4, 4);
+    g.init();
     println!("{:?}", g);
-    let acs = g.adjacent_cells(2,2);
-    println!("{:?}", acs);
+
+    let locs = g.mine_locations();
+    println!("{:?}", locs);
 }

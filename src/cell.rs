@@ -1,29 +1,32 @@
 use std::fmt::{Debug,Display,Result,Formatter};
 
 // default characters used for printing a cell "state" to an output stream (like stdio)
-const MINE: char      = '*';
-const HIDDEN: char    = 'O';
+const MINE: char      = '⊙';          //
+const HIDDEN: char    = '\u{2610}';   // ballot box
 const REVEALED: char  = '0';
-const QUESTION: char  = '?';
-const FLAG: char      = '!';
+const QUESTION: char  = '\u{003F}';   // question mark
+const FLAG: char      = '⚑';         // black flag
 
-
+#[derive(PartialEq)]
 pub enum CellState {
     Revealed,
     Marked(CellMarker),
     None
 }
 
+#[derive(PartialEq)]
 pub enum CellMarker {
     Flagged,
     Questioned,
 }
 
+#[derive(PartialEq)]
 pub enum CellKind {
     Mine,
     Empty
 }
 
+#[derive(PartialEq)]
 pub struct Cell {
     state: CellState,
     kind: CellKind,
@@ -41,6 +44,9 @@ pub trait MineSweeperCell {
     fn state(&self) -> &CellState;
     fn adj_mine_count(&self) -> u8;
     fn set_adj_mine_count(&mut self, count: u8);
+
+    /// a cell that is empty and has an adjacent mine count = 0
+    fn is_lone_cell(&self) -> bool;
 }
 
 impl Cell {
@@ -52,9 +58,11 @@ impl Cell {
             adj_mine_count: 0,
         }
     }
+
 }
 
 impl MineSweeperCell for Cell {
+
 
 
     fn reveal(&mut self) {
@@ -95,6 +103,10 @@ impl MineSweeperCell for Cell {
 
     fn set_adj_mine_count(&mut self, count: u8) {
         self.adj_mine_count = count
+    }
+
+    fn is_lone_cell(&self) -> bool {
+        self.kind == CellKind::Empty && self.adj_mine_count == 0
     }
 }
 

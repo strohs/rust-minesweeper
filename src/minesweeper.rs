@@ -11,6 +11,8 @@ pub struct Game<T: MineSweeperCell> {
 }
 
 pub trait MineSweeperGame {
+    fn init(&mut self);
+    fn mine_locations(&self) -> Vec<(usize,usize)>;
     fn dimensions(&self) -> (usize, usize);
     fn total_mines(&self) -> usize;
     fn randomize_mine_locations(&mut self);
@@ -36,9 +38,86 @@ impl Game<Cell> {
         }
     }
 
+    /// returns the indices of all cells located "around" the cell located at r,c
+    pub fn adjacent_indices(&self, r: usize, c: usize) -> Vec<(usize, usize)> {
+        let mut ndxs = vec![];
+        let max_rows = self.grid.len();
+        let max_cols = self.grid[0].len();
+        let rstart = if r <= 1 { 0 } else { r - 1 };
+        let cstart = if c <= 1 { 0 } else { c - 1 };
+        let rend = if (r + 1) >= max_rows { max_rows-1 } else { r + 1 };
+        let cend = if (c + 1) >= max_cols { max_cols-1 } else { c + 1 };
+        println!("[{}:{}] [{}:{}]", rstart,rend, cstart, cend );
+
+        for nr in rstart..=rend {
+            for nc in cstart..=cend {
+                // push all the cells located around index: r,c  into the return vector
+                if nr != r || nc != c {
+                    ndxs.push((nr, nc));
+                }
+            }
+        }
+        ndxs
+    }
+
+    pub fn connected_cell_indices(&self, r: usize, c: usize) -> Vec<(usize,usize)> {
+        let mut visited = vec![];
+        let mut to_visit = vec![(r,c)];
+        let mut connected_ndxs = vec![];
+
+        while !to_visit.is_empty() {
+            let (cr,cc) = to_visit.pop().unwrap();
+
+            if visited.contains(&(cr,cc) ) {
+                continue;    
+            } else {
+                // if the current cell is a "lone" cell add it to the list of connected cells
+                if self.grid[cr][cc].is_lone_cell() { connected_ndxs.push( (cr,cc) ); }
+
+                // add the current cell to the already visited list
+                visited.push((cr,cc) );
+
+                // get a list of "lone" cells adjacent to the current cell
+                let mut adj_ndxs = self.adjacent_indices(cr,cc)
+                    .into_iter()
+                    .filter(|(r, c)| {
+                        self.grid[*r][*c].is_lone_cell()
+                    } )
+                    .collect::<Vec<(usize,usize)>>();
+                to_visit.append( &mut adj_ndxs);
+            }
+        }
+        connected_ndxs
+    }
 }
 
 impl MineSweeperGame for Game<Cell> {
+
+    fn init(&mut self) {
+        self.randomize_mine_locations();
+
+        // set the adjacent mine counts for each cell
+        for (r,c) in self.mine_locations() {
+            self.adjacent_cells(r,c)
+                .iter_mut()
+                .filter(|cell| *cell.kind() != CellKind::Mine )
+                .for_each(|cell| {
+                    let mine_count = cell.adj_mine_count() + 1;
+                    cell.set_adj_mine_count( mine_count );
+                })
+        }
+    }
+
+    fn mine_locations(&self) -> Vec<(usize, usize)> {
+        let mut locations = vec![];
+        for (r, row) in self.grid.iter().enumerate() {
+            for (c, cell) in row.iter().enumerate() {
+                if *cell.kind() == CellKind::Mine { locations.push( (r,c) ) }
+            }
+        }
+        locations
+    }
+
     fn dimensions(&self) -> (usize, usize) {
         (self.grid.len(), self.grid[0].len())
     }
@@ -79,21 +158,19 @@ impl MineSweeperGame for Game<Cell> {
     }
 
     fn adjacent_cells(&mut self, r: usize, c: usize) -> Vec<&mut Cell> {
-        let mut cells: Vec<&mut Cell> = vec![];
-        cells.push( &mut self.grid[0][0] );
-        cells.push( &mut self.grid[1][1] );
-        //if self.cell_exists(r-1,c) { cells.push( &mut self.grid[r-1][c] ) }
-        //if self.cell_exists(r-1,c-1) { cells.push( &mut self.grid[r-1][c-1] ) }
-//        if let Some(top) = self.get_cell(r-1, c) { cells.push(top); }
-//        if let Some(top_left) = self.get_cell(r-1, c-1) { cells.push(top_left); }
-//        if let Some(top_right) = self.get_cell(r+1, c+1) {cells.push(top_right); }
-//        if let Some(right) = self.get_cell(r, c+1) { cells.push(right); }
-//        if let Some(bot_right) = self.get_cell(r+1, c+1) { cells.push(bot_right); }
-//        if let Some(bot) = self.get_cell(r+1, c) { cells.push(bot); }
-//        if let Some(bot_left) = self.get_cell(r+1, c-1) { cells.push(bot_left); }
-//        if let Some(left) = self.get_cell(r-1, c) { cells.push(left); }
-        cells
+        let neighbor_ndxs = self.adjacent_indices(r, c);
+        let mut neighbors = vec![];
+        for (ri, row) in self.grid.iter_mut().enumerate() {
+            for (ci,cell) in row.iter_mut().enumerate() {
+                if neighbor_ndxs.contains(&(ri,ci) ) {
+                    neighbors.push(cell);
+                }
+            }
+        }
+        neighbors
     }
+
+
 }
 
 impl fmt::Display for Game<Cell> {
