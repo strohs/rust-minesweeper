@@ -2,7 +2,7 @@ use std::fmt;
 use rand::{thread_rng};
 use rand::seq::{SliceRandom};
 
-use crate::cell::{Cell, MineSweeperCell, CellKind};
+use crate::grid_cell::{GridCell, MineSweeperCell, CellKind, CellState, CellMarker};
 use core::borrow::BorrowMut;
 
 pub struct Game<T: MineSweeperCell> {
@@ -11,43 +11,54 @@ pub struct Game<T: MineSweeperCell> {
 }
 
 pub trait MineSweeperGame {
-    fn init(&mut self);
+    fn init(r: usize, c: usize) -> Self;
     fn mine_locations(&self) -> Vec<(usize,usize)>;
-    fn dimensions(&self) -> (usize, usize);
     fn total_mines(&self) -> usize;
-    fn randomize_mine_locations(&mut self);
-    fn cell_exists(&self, r: usize, c: usize) -> bool;
-    fn adjacent_cells(&mut self, r: usize, c: usize) -> Vec<&mut Cell>;
-//    fn reveal_cell(&mut self, r: usize, c:usize) -> impl MineSweeperCell;
-//    fn mark_cell(&mut self, r:usize, c:usize) -> impl MineSweeperCell;
+    fn reveal_cell(&mut self, r: usize, c:usize);
+    fn reveal_connected_cells(&mut self, r: usize, c: usize);
+    fn flag_cell(&mut self, r:usize, c:usize);
+    fn question_cell(&mut self, r: usize, c:usize);
+    fn is_game_won(&self) -> bool;
+    fn is_game_over(&self) -> bool;
 }
 
-impl Game<Cell> {
-    pub fn new(rows: usize, cols:usize) -> Game<Cell> {
+impl Game<GridCell> {
+
+    fn empty_grid(rows: usize, cols:usize) -> Vec<Vec<GridCell>> {
         let mut grid = Vec::with_capacity(rows);
         for _r in 0..rows {
             let mut row = Vec::with_capacity(cols);
             for _c in 0..cols {
-                row.push(Cell::new(CellKind::Empty))
+                row.push(GridCell::new(CellKind::Empty))
             }
             grid.push(row)
         }
-        Game {
-            grid,
-            elapsed_time: 0,
-        }
+        grid
     }
 
-    /// returns the indices of all cells located "around" the cell located at r,c
-    pub fn adjacent_indices(&self, r: usize, c: usize) -> Vec<(usize, usize)> {
+    /// returns a Vec of length *count, containing random row,col indices
+    fn random_grid_indices(row_len: usize, col_len: usize, count: usize) -> Vec<(usize,usize)> {
+        // build a vec of all grid indices in row major form and shuffle them
+        let mut rng = thread_rng();
+        let mut grid_indices: Vec<usize> = (0..(row_len * col_len)).map(|i| i).collect();
+        grid_indices.shuffle(&mut rng);
+
+        grid_indices.into_iter()
+            .take(count)
+            .map(|i| (i / col_len, i - ((i / col_len) * col_len) ))
+            .collect::<Vec<(usize, usize)>>()
+    }
+
+    /// returns the indices of all grid cells located "around" the cell located at r,c, but
+    /// does not include the cell at r,c
+    fn adjacent_indices(grid: &Vec<Vec<GridCell>>, r: usize, c: usize) -> Vec<(usize, usize)> {
         let mut ndxs = vec![];
-        let max_rows = self.grid.len();
-        let max_cols = self.grid[0].len();
+        let max_rows = grid.len();
+        let max_cols = grid[0].len();
         let rstart = if r <= 1 { 0 } else { r - 1 };
         let cstart = if c <= 1 { 0 } else { c - 1 };
         let rend = if (r + 1) >= max_rows { max_rows-1 } else { r + 1 };
         let cend = if (c + 1) >= max_cols { max_cols-1 } else { c + 1 };
-        println!("[{}:{}] [{}:{}]", rstart,rend, cstart, cend );
 
         for nr in rstart..=rend {
             for nc in cstart..=cend {
@@ -78,7 +89,7 @@ impl Game<Cell> {
                 visited.push((cr,cc) );
 
                 // get a list of "lone" cells adjacent to the current cell
-                let mut adj_ndxs = self.adjacent_indices(cr,cc)
+                let mut adj_ndxs = Game::adjacent_indices(&self.grid, cr,cc)
                     .into_iter()
                     .filter(|(r, c)| {
                         self.grid[*r][*c].is_lone_cell()
@@ -91,20 +102,29 @@ impl Game<Cell> {
     }
 }
 
-impl MineSweeperGame for Game<Cell> {
+impl MineSweeperGame for Game<GridCell> {
 
-    fn init(&mut self) {
-        self.randomize_mine_locations();
+    fn init(r: usize, c: usize) -> Self {
+        let mut grid = Game::empty_grid(r, c);
 
-        // set the adjacent mine counts for each cell
-        for (r,c) in self.mine_locations() {
-            self.adjacent_cells(r,c)
-                .iter_mut()
-                .filter(|cell| *cell.kind() != CellKind::Mine )
-                .for_each(|cell| {
-                    let mine_count = cell.adj_mine_count() + 1;
-                    cell.set_adj_mine_count( mine_count );
-                })
+        // generate random mine locations
+        let total_mines = ((r * c) as f32 * 0.15f32).round() as usize;
+        let mine_ndxs = Game::random_grid_indices(r,c, total_mines);
+        for (ri, ci) in mine_ndxs.iter() {
+            grid[*ri][*ci] = GridCell::new(CellKind::Mine );
+        }
+
+        // set the adjacent mine counts for every cell that contains a mine
+        for (ri,ci) in mine_ndxs.iter() {
+            for (ari, aci) in Game::adjacent_indices( &grid, *ri, *ci ) {
+                let cur_count = grid[ari][aci].adj_mine_count() + 1;
+                grid[ari][aci].set_adj_mine_count( cur_count );
+            }
+        }
+
+        Game {
+            grid,
+            elapsed_time: 0
         }
     }
 
@@ -118,62 +138,61 @@ impl MineSweeperGame for Game<Cell> {
         locations
     }
 
-    fn dimensions(&self) -> (usize, usize) {
-        (self.grid.len(), self.grid[0].len())
-    }
-
     /// computes the total mines that should be on a grid, using the grid's dimensions
     /// TOTAL_MINES = grid.rows * grid.columns * 0.15
     fn total_mines(&self) -> usize {
-        let (r,c) = self.dimensions();
-        ((r * c) as f32 * 0.15f32).round() as usize
+        let row_len = self.grid.len();
+        let col_len = self.grid[0].len();
+        ((row_len * col_len) as f32 * 0.15f32).round() as usize
     }
 
-    /// generates random mine locations on the grid
-    fn randomize_mine_locations(&mut self) {
-        let (r,c) = self.dimensions();
-        // build a vec of all grid indices in row major form and shuffle them
-        let mut rng = thread_rng();
-        let mut grid_indices: Vec<usize> = (0..(r * c)).map(|i| i).collect();
-        grid_indices.shuffle(&mut rng);
-
-        // set the mine locations in the grid
-        for idx in grid_indices.iter().take(self.total_mines()) {
-            let row = idx / c;
-            let col = idx - ((idx / c) * c);
-            self.grid[row][col] = Cell::new(CellKind::Mine );
+    /// reveals the grid cell located at index r,c. This method will also reveal any "lone"
+    /// cells connected to this cell.
+    fn reveal_cell(&mut self, r: usize, c: usize) {
+        if *self.grid[r][c].state() != CellState::Revealed {
+            self.grid[r][c].set_state( CellState::Revealed );
+            self.reveal_connected_cells(r,c);
         }
     }
 
-    fn cell_exists(&self, r: usize, c: usize) -> bool {
-        if let Some(row) = self.grid.get(r) {
-            if let Some(cell) = row.get(c) {
-                true
-            } else {
-                false
-            }
-        } else {
-            false
+    /// reveal all empty grid cells that are connected to this cell BUT aren't adjacent
+    /// to any mines
+    fn reveal_connected_cells(&mut self, r: usize, c: usize) {
+        for (ri,ci) in self.connected_cell_indices(r,c) {
+            self.reveal_cell(ri,ci);
         }
     }
 
-    fn adjacent_cells(&mut self, r: usize, c: usize) -> Vec<&mut Cell> {
-        let neighbor_ndxs = self.adjacent_indices(r, c);
-        let mut neighbors = vec![];
-        for (ri, row) in self.grid.iter_mut().enumerate() {
-            for (ci,cell) in row.iter_mut().enumerate() {
-                if neighbor_ndxs.contains(&(ri,ci) ) {
-                    neighbors.push(cell);
-                }
-            }
+    fn flag_cell(&mut self, r: usize, c: usize) {
+        if *self.grid[r][c].state() != CellState::Revealed {
+            self.grid[r][c].set_state( CellState::Marked(CellMarker::Flagged) );
         }
-        neighbors
     }
 
+    fn question_cell(&mut self, r: usize, c: usize) {
+        if *self.grid[r][c].state() != CellState::Revealed {
+            self.grid[r][c].set_state( CellState::Marked(CellMarker::Questioned) );
+        }
+    }
 
+    /// checks if the current game is won and returns true if it is won
+    /// A game is won if all mined cells have been flagged
+    fn is_game_won(&self) -> bool {
+        self.mine_locations()
+            .iter()
+            .all(|(r,c)| self.grid[*r][*c].is_flagged() )
+    }
+
+    /// checks if a game is over and returns true if it is, otherwise returns false
+    /// A game is over once a mined cell has been revealed
+    fn is_game_over(&self) -> bool {
+        self.mine_locations()
+            .iter()
+            .any(|(r,c)| *self.grid[*r][*c].state() == CellState::Revealed)
+    }
 }
 
-impl fmt::Display for Game<Cell> {
+impl fmt::Display for Game<GridCell> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = String::new();
         for row in self.grid.iter() {
@@ -186,7 +205,7 @@ impl fmt::Display for Game<Cell> {
     }
 }
 
-impl fmt::Debug for Game<Cell> {
+impl fmt::Debug for Game<GridCell> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buf = String::new();
         for row in self.grid.iter() {

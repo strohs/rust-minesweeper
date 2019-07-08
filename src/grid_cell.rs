@@ -1,11 +1,11 @@
 use std::fmt::{Debug,Display,Result,Formatter};
 
 // default characters used for printing a cell "state" to an output stream (like stdio)
-const MINE: char      = '⊙';          //
-const HIDDEN: char    = '\u{2610}';   // ballot box
-const REVEALED: char  = '0';
-const QUESTION: char  = '\u{003F}';   // question mark
-const FLAG: char      = '⚑';         // black flag
+const MINE: char        = '\u{25CF}';   // black circle \u{25CF}
+const REVEALED: char    = '\u{2610}';   // ballot box
+const HIDDEN: char      = '\u{25A1}';   // white square
+const QUESTION: char    = '\u{003F}';   // question mark
+const FLAG: char        = '⚑';         // black flag
 
 #[derive(PartialEq)]
 pub enum CellState {
@@ -27,7 +27,7 @@ pub enum CellKind {
 }
 
 #[derive(PartialEq)]
-pub struct Cell {
+pub struct GridCell {
     state: CellState,
     kind: CellKind,
     adj_mine_count: u8
@@ -35,7 +35,6 @@ pub struct Cell {
 
 pub trait MineSweeperCell {
 
-    fn reveal(&mut self);
     fn marker(&self) -> Option<CellMarker>;
     fn set_marker(&mut self, marker: CellMarker);
     fn set_kind(&mut self, state: CellKind);
@@ -47,12 +46,14 @@ pub trait MineSweeperCell {
 
     /// a cell that is empty and has an adjacent mine count = 0
     fn is_lone_cell(&self) -> bool;
+    /// is the cell currently flagged
+    fn is_flagged(&self) -> bool;
 }
 
-impl Cell {
+impl GridCell {
     // create an empty cell
-    pub fn new(kind :CellKind) -> Cell {
-        Cell {
+    pub fn new(kind :CellKind) -> GridCell {
+        GridCell {
             state: CellState::None,
             kind: kind,
             adj_mine_count: 0,
@@ -61,13 +62,7 @@ impl Cell {
 
 }
 
-impl MineSweeperCell for Cell {
-
-
-
-    fn reveal(&mut self) {
-        self.state = CellState::Revealed;
-    }
+impl MineSweeperCell for GridCell {
 
     fn marker(&self) -> Option<CellMarker> {
         match self.state {
@@ -108,17 +103,21 @@ impl MineSweeperCell for Cell {
     fn is_lone_cell(&self) -> bool {
         self.kind == CellKind::Empty && self.adj_mine_count == 0
     }
+
+    fn is_flagged(&self) -> bool {
+        self.state == CellState::Marked(CellMarker::Flagged)
+    }
 }
 
 /// Prints the cell and takes into account whether or not the cell has been revealed or marked.
 /// This is the default method to use for displaying a cell
-impl Display for Cell {
+impl Display for GridCell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.state {
             CellState::Revealed => {
                 match self.kind {
                     CellKind::Mine => MINE,
-                    CellKind::Empty if self.adj_mine_count > 0 => self.adj_mine_count as char,
+                    CellKind::Empty if self.adj_mine_count > 0 => (self.adj_mine_count + 48) as char,
                     _ => REVEALED,
                 }
             },
@@ -132,7 +131,7 @@ impl Display for Cell {
 
 /// Debug will print the cells "kind". It essentially reveals the cell so that you can
 /// see the mined cells and also check if the mine counts are correct
-impl Debug for Cell {
+impl Debug for GridCell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.kind {
             CellKind::Mine => MINE,
