@@ -109,8 +109,8 @@ impl MineSweeperCell for GridCell {
     }
 }
 
-/// Prints the cell and takes into account whether or not the cell has been revealed or marked.
-/// This is the default method to use for displaying a cell
+/// Prints the GridCell and takes into account whether or not the cell has been revealed or marked.
+/// This method is used to display the gridCell during a game of MineSweeper
 impl Display for GridCell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.state {
@@ -141,3 +141,62 @@ impl Debug for GridCell {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::grid_cell::CellKind::Empty;
+
+    #[test]
+    fn revealed_mined_cell_should_display_as_mine_char() {
+        let mined_cell = GridCell { state: CellState::Revealed, kind: CellKind::Mine, adj_mine_count: 0 };
+        assert_eq!( format!("{}", mined_cell), MINE.to_string() );
+    }
+
+    #[test]
+    fn hidden_cell_should_display_as_hidden_char() {
+        let mined_cell = GridCell { state: CellState::None, kind: CellKind::Mine, adj_mine_count: 0 };
+        assert_eq!( format!("{}", mined_cell), HIDDEN.to_string() );
+    }
+
+    #[test]
+    fn revealed_empty_cell_with_no_adjacent_mines_should_display_revealed_char() {
+        let cell = GridCell { state: CellState::Revealed, kind: CellKind::Empty, adj_mine_count: 0 };
+        assert_eq!( format!("{}", cell), REVEALED.to_string() );
+    }
+
+    #[test]
+    fn revealed_empty_cell_with_adjacent_mines_should_display_adj_mine_count() {
+        let cell = GridCell { state: CellState::Revealed, kind: CellKind::Empty, adj_mine_count: 3 };
+        assert_eq!( format!("{}", cell), "3".to_string() );
+    }
+
+    #[test]
+    fn flagged_cell_displays_the_flag_char() {
+        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 1 };
+        assert_eq!( format!("{}", cell), FLAG.to_string() );
+    }
+
+    #[test]
+    fn questioned_cell_displays_the_question_char() {
+        let cell = GridCell { state: CellState::Marked(CellMarker::Questioned), kind: CellKind::Empty, adj_mine_count: 1 };
+        assert_eq!( format!("{}", cell), QUESTION.to_string() );
+    }
+
+    #[test]
+    fn lone_cell_test_should_return_true_for_empty_cell_with_0_adj_mines() {
+        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 0 };
+        assert!( cell.is_lone_cell() );
+    }
+
+    #[test]
+    fn lone_cell_test_should_return_false_for_empty_cell_with_gt_0_adj_mines() {
+        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 2 };
+        assert_eq!( cell.is_lone_cell(), false );
+    }
+
+    #[test]
+    fn lone_cell_test_should_return_false_for_any_mined_cell() {
+        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Mine, adj_mine_count: 2 };
+        assert_eq!( cell.is_lone_cell(), false );
+    }
+}

@@ -3,7 +3,6 @@ use rand::{thread_rng};
 use rand::seq::{SliceRandom};
 
 use crate::grid_cell::{GridCell, MineSweeperCell, CellKind, CellState, CellMarker};
-use core::borrow::BorrowMut;
 
 pub struct Game<T: MineSweeperCell> {
     grid: Vec<Vec<T>>,
@@ -175,8 +174,8 @@ impl MineSweeperGame for Game<GridCell> {
         }
     }
 
-    /// checks if the current game is won and returns true if it is won
-    /// A game is won if all mined cells have been flagged
+    /// checks if the current game is won and returns true else false
+    /// A game is won if all cell containing a mine have been flagged
     fn is_game_won(&self) -> bool {
         self.mine_locations()
             .iter()
