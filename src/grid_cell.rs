@@ -2,7 +2,7 @@ use std::fmt::{Debug,Display,Result,Formatter};
 
 // default characters used for printing a cell "state" to an output stream (like stdio)
 const MINE: char        = '\u{25CF}';   // black circle \u{25CF}
-const REVEALED: char    = '\u{2610}';   // ballot box
+const REVEALED: char    = '0';   // ballot box \u{2610}
 const HIDDEN: char      = '\u{25A1}';   // white square
 const QUESTION: char    = '\u{003F}';   // question mark
 const FLAG: char        = '⚑';         // black flag

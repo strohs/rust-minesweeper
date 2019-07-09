@@ -4,12 +4,9 @@ use std::io::{BufReader, BufRead, ErrorKind};
 use crate::grid_cell::GridCell;
 use std::num::ParseIntError;
 
-/// enables a user to interact with a MineSweeperGame via the command line (stdin)
+/// enables a user to play a Mine Sweeper Game via the command line (stdin)
 ///
-/// The user will enter commands using a single letter command followed by a space and then
-/// a row and column index
-///
-/// # Example
+/// The user will enter commands using a space separated string in one of the following formats:
 /// * to create a new game with 5 rows and 5 columns: `n 5 5`
 /// * to reveal the square at row 0 column 1: `r 0 1`
 /// * to flag a square at row 2 column 4: `f 2 4`
@@ -32,6 +29,50 @@ impl CommandLineAdapter<Game<GridCell>> {
 
     pub fn new(game: Game<GridCell>) -> Self {
         CommandLineAdapter { game }
+    }
+
+    pub fn start(&mut self) {
+        loop {
+            match CommandLineAdapter::read_line() {
+                Ok(command_str) => {
+                    match CommandLineAdapter::parse_command(command_str.as_str()) {
+                        Ok(Command::Quit) => {
+                            break
+                        },
+                        Ok(Command::New(r, c)) => {
+                            self.game = Game::init(r, c);
+                        },
+                        Ok(Command::Flag(r, c)) => {
+                            self.game.flag_cell(r, c);
+                        },
+                        Ok(Command::Question(r, c)) => {
+                            self.game.question_cell(r, c);
+                        },
+                        Ok(Command::Reveal(r, c)) => {
+                            self.game.reveal_cell(r, c);
+                        },
+                        Err(e) => {
+                            println!("{}", &e);
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("{}", e);
+                    break
+                }
+            }
+            if self.game.is_game_over() {
+                println!("you hit a mine!");
+                println!("{:?}", self.game);
+                break
+            }
+            if self.game.is_game_won() {
+                println!("you win!!");
+                println!("{:?}", self.game);
+                break
+            }
+            println!("{}", self.game);
+        }
     }
 
     pub fn read_line() -> io::Result<String> {
