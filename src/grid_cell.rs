@@ -62,6 +62,7 @@ pub trait MineSweeperCell {
 
     /// a cell that is empty and has an adjacent mine count = 0
     fn is_lone_cell(&self) -> bool;
+
     /// is the cell currently flagged
     fn is_flagged(&self) -> bool;
 }

@@ -16,6 +16,7 @@ pub struct Game<T: MineSweeperCell> {
 
 pub trait MineSweeperGame {
     fn init(r: usize, c: usize) -> Self;
+    fn dimensions(&self) -> (usize, usize);
     fn mine_indices(&self) -> Vec<(usize, usize)>;
     fn total_mines(&self) -> usize;
     fn reveal_cell(&mut self, r: usize, c:usize);
@@ -138,6 +139,11 @@ impl MineSweeperGame for Game<GridCell> {
             grid,
             elapsed_time: 0
         }
+    }
+
+    /// returns the dimensions of the game grid as (row, col)
+    fn dimensions(&self) -> (usize, usize) {
+        (self.grid.len(), self.grid[0].len() )
     }
 
     /// returns the row,col indices of mined cells

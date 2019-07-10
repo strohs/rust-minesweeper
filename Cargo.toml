@@ -10,6 +10,7 @@ rand = "0.7"
 
 # Path Clarity in Rust 2018 edition
 #    https://doc.rust-lang.org/stable/edition-guide/rust-2018/module-system/path-clarity.html
+#
 # * extern crate is no longer needed in 99% of circumstances.
 # * The crate keyword refers to the current crate.
 # * Paths may start with a crate name, even within submodules.
