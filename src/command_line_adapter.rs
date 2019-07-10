@@ -1,7 +1,7 @@
 use crate::minesweeper::{MineSweeperGame, Game};
 use std::io;
 use std::io::{BufReader, BufRead, ErrorKind};
-use crate::grid_cell::GridCell;
+use crate::grid_cell::{GridCell, CellState, CellMarker};
 use std::num::ParseIntError;
 
 /// enables a user to play a Mine Sweeper Game via the command line (stdin)
@@ -19,6 +19,7 @@ pub struct CommandLineAdapter<T: MineSweeperGame> {
 #[derive(Debug)]
 pub enum Command {
     Quit,
+    Debug,
     New(usize, usize),
     Reveal(usize, usize),
     Flag(usize, usize),
@@ -39,14 +40,17 @@ impl CommandLineAdapter<Game<GridCell>> {
                         Ok(Command::Quit) => {
                             break
                         },
+                        Ok(Command::Debug) => {
+                            println!("{:?}", &self.game);
+                        },
                         Ok(Command::New(r, c)) => {
                             self.game = Game::init(r, c);
                         },
                         Ok(Command::Flag(r, c)) => {
-                            self.game.flag_cell(r, c);
+                            self.game.toggle_mark(r, c, CellMarker::Flagged)
                         },
                         Ok(Command::Question(r, c)) => {
-                            self.game.question_cell(r, c);
+                            self.game.toggle_mark(r, c, CellMarker::Questioned)
                         },
                         Ok(Command::Reveal(r, c)) => {
                             self.game.reveal_cell(r, c);
@@ -92,6 +96,7 @@ impl CommandLineAdapter<Game<GridCell>> {
         let cs = command.split_whitespace().collect::<Vec<&str>>();
         match cs[0] {
             "quit" => Ok(Command::Quit),
+            "debug" => Ok(Command::Debug),
             "n" if cs.len() == 3 => {
                 let (r, c) = parse_row_col( &cs[1..3] )?;
                 Ok(Command::New(r, c))

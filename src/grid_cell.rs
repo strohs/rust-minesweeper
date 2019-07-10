@@ -1,17 +1,18 @@
 use std::fmt::{Debug,Display,Result,Formatter};
 
-// default characters used for printing a cell "state" to an output stream (like stdio)
-const MINE: char        = '\u{25CF}';   // black circle \u{25CF}
-const REVEALED: char    = '0';   // ballot box \u{2610}
-const HIDDEN: char      = '\u{25A1}';   // white square
+// default characters used for representing a cell's "state" as a char
+const MINE: char        = '\u{25CF}';   // UTF-8 black circle \u{25CF}
+const REVEALED: char    = '0';          // UTF-8 ballot box \u{2610}
+const HIDDEN: char      = '\u{25A1}';   // UTF-8 white square
 const QUESTION: char    = '\u{003F}';   // question mark
-const FLAG: char        = '⚑';         // black flag
+const FLAG: char        = '⚑';         // UTF-8 black flag \u{2691}
+
 
 #[derive(PartialEq)]
 pub enum CellState {
     Revealed,
     Marked(CellMarker),
-    None
+    Unknown
 }
 
 #[derive(PartialEq)]
@@ -35,13 +36,28 @@ pub struct GridCell {
 
 pub trait MineSweeperCell {
 
+    /// return the cells current marker if any, else returns None if the cells is not marked
     fn marker(&self) -> Option<CellMarker>;
+
+    /// set the cell's Marker (either flagged or questioned)
     fn set_marker(&mut self, marker: CellMarker);
+
+    /// set the Cell Kind
     fn set_kind(&mut self, state: CellKind);
+
+    /// returns the cells kind,, either Mine or Empty
     fn kind(&self) -> &CellKind;
+
+    /// sets the cells state ( revealed, flagged, unknown...)
     fn set_state(&mut self, state: CellState);
+
+    /// returns the cells current state
     fn state(&self) -> &CellState;
+
+    /// returns the count of the number of mines adjacent to this cell
     fn adj_mine_count(&self) -> u8;
+
+    /// sets the adjacent mine count of this cell
     fn set_adj_mine_count(&mut self, count: u8);
 
     /// a cell that is empty and has an adjacent mine count = 0
@@ -51,10 +67,11 @@ pub trait MineSweeperCell {
 }
 
 impl GridCell {
-    // create an empty cell
+
+    /// create a new empty cell, with CellState::Unknown and adjacent mine count of 0
     pub fn new(kind :CellKind) -> GridCell {
         GridCell {
-            state: CellState::None,
+            state: CellState::Unknown,
             kind: kind,
             adj_mine_count: 0,
         }
@@ -123,7 +140,7 @@ impl Display for GridCell {
             },
             CellState::Marked(CellMarker::Flagged) => FLAG,
             CellState::Marked(CellMarker::Questioned) => QUESTION,
-            CellState::None => HIDDEN
+            CellState::Unknown => HIDDEN
         };
         write!(f,"{}", cell_char)
     }
@@ -154,7 +171,7 @@ mod tests {
 
     #[test]
     fn hidden_cell_should_display_as_hidden_char() {
-        let mined_cell = GridCell { state: CellState::None, kind: CellKind::Mine, adj_mine_count: 0 };
+        let mined_cell = GridCell { state: CellState::Unknown, kind: CellKind::Mine, adj_mine_count: 0 };
         assert_eq!( format!("{}", mined_cell), HIDDEN.to_string() );
     }
 
