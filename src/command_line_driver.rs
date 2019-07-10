@@ -12,7 +12,7 @@ use std::num::ParseIntError;
 /// * to flag a square at row 2 column 4: `f 2 4`
 /// * to question a square at row 1 column 3: `q 1 3`
 
-pub struct CommandLineAdapter<T: MineSweeperGame> {
+pub struct CommandLineDriver<T: MineSweeperGame> {
     pub game: T,
 }
 
@@ -26,17 +26,17 @@ pub enum Command {
     Question(usize, usize),
 }
 
-impl CommandLineAdapter<Game<GridCell>> {
+impl CommandLineDriver<Game<GridCell>> {
 
     pub fn new(game: Game<GridCell>) -> Self {
-        CommandLineAdapter { game }
+        CommandLineDriver { game }
     }
 
     pub fn start(&mut self) {
         loop {
-            match CommandLineAdapter::read_line() {
+            match CommandLineDriver::read_line() {
                 Ok(command_str) => {
-                    match CommandLineAdapter::parse_command(command_str.as_str()) {
+                    match CommandLineDriver::parse_command(command_str.as_str()) {
                         Ok(Command::Quit) => {
                             break
                         },
