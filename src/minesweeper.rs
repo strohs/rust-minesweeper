@@ -1,7 +1,7 @@
-//! this is the main game logic and state for Rust Minesweeper.
+//! this mod contains the main game logic and game state for Rust Minesweeper.
 //!
-//! The game "grid" is maintained in a 2-dimensional Vec of `GridCell`s which is then
-//! contained within the `Game` struct
+//! The game "grid" is a wrapper around a 2-dimensional Vec of `GridCell`s
+//!
 
 use std::fmt;
 use rand::{thread_rng};
@@ -9,24 +9,53 @@ use rand::seq::{SliceRandom};
 use crate::grid_cell::{GridCell, MineSweeperCell, CellKind, CellState, CellMarker};
 use std::collections::HashSet;
 
+/// contains the minesweeper grid and elapsed time
 pub struct Game<T: MineSweeperCell> {
     grid: Vec<Vec<T>>,
     elapsed_time: u64,
 }
 
 pub trait MineSweeperGame {
+
+    /// initialize a new game of mine sweeper with r rows and c columns
     fn init(r: usize, c: usize) -> Self;
+
+    /// returns the dimensions of the minesweeper grid
     fn dimensions(&self) -> (usize, usize);
+
+    /// returns the row,col indices of GridCells that are mined
     fn mine_indices(&self) -> Vec<(usize, usize)>;
+
+    /// returns a count of the total number of mines in the grid
     fn total_mines(&self) -> usize;
+
+    /// reveals the cell at index r,c
     fn reveal_cell(&mut self, r: usize, c:usize);
+
+    /// reveals all "empty" cells connected to the cell given by the index: r,c
+    /// this essentially does a flood fill reveal of connected empty cells with no adjacent mines
     fn reveal_connected_cells(&mut self, r: usize, c: usize);
+
+    /// place a flag marker at the cell given by the index: r,c
     fn flag_cell(&mut self, r:usize, c:usize);
+
+    /// places a question marker at the cell given by the index: r,c
     fn question_cell(&mut self, r: usize, c:usize);
+
+    /// removes a marker from the cell (if present) given by the index: r,c
     fn unmark_cell(&mut self, r: usize, c:usize);
+
+    /// toggles a cell marker. If a marker is already present at index: r,c then this method
+    /// will remove it. If the cell is unmarked, then the CellMarker given by `mark` is placed
     fn toggle_mark(&mut self, r: usize, c: usize, mark: CellMarker);
+
+    /// returns true if the current game is *won. A minesweeper game is won when all mined cells
+    /// have been correctly flagged
     fn is_game_won(&self) -> bool;
-    fn is_game_over(&self) -> bool;
+
+    /// returns true if a minesweeper game is over (or lost). A game is lost if a user reveals
+    /// a mined cell
+    fn is_game_lost(&self) -> bool;
 }
 
 impl Game<GridCell> {
@@ -141,12 +170,10 @@ impl MineSweeperGame for Game<GridCell> {
         }
     }
 
-    /// returns the dimensions of the game grid as (row, col)
     fn dimensions(&self) -> (usize, usize) {
         (self.grid.len(), self.grid[0].len() )
     }
 
-    /// returns the row,col indices of mined cells
     fn mine_indices(&self) -> Vec<(usize, usize)> {
         let mut locations = vec![];
         for (r, row) in self.grid.iter().enumerate() {
@@ -157,7 +184,6 @@ impl MineSweeperGame for Game<GridCell> {
         locations
     }
 
-    /// computes the total mines that should be on a grid, using the grid's dimensions
     /// TOTAL_MINES = grid.rows * grid.columns * 0.15
     fn total_mines(&self) -> usize {
         let row_len = self.grid.len();
@@ -165,8 +191,6 @@ impl MineSweeperGame for Game<GridCell> {
         ((row_len * col_len) as f32 * 0.15f32).round() as usize
     }
 
-    /// reveals the grid cell located at index r,c. This method will also reveal any "lone"
-    /// cells connected to this cell.
     fn reveal_cell(&mut self, r: usize, c: usize) {
         if *self.grid[r][c].state() != CellState::Revealed {
             self.grid[r][c].set_state( CellState::Revealed );
@@ -174,8 +198,7 @@ impl MineSweeperGame for Game<GridCell> {
         }
     }
 
-    /// reveal all empty grid cells that are connected to this cell BUT aren't adjacent
-    /// to any mines
+
     fn reveal_connected_cells(&mut self, r: usize, c: usize) {
         let connected_ndxs = self.connected_lone_cell_indices(r, c);
 
@@ -192,21 +215,21 @@ impl MineSweeperGame for Game<GridCell> {
         }
     }
 
-    /// marks the cell at index r,c as flagged
+
     fn flag_cell(&mut self, r: usize, c: usize) {
         if *self.grid[r][c].state() != CellState::Revealed {
             self.grid[r][c].set_state( CellState::Marked(CellMarker::Flagged) );
         }
     }
 
-    /// marks the cell at index r,c as questioned
+
     fn question_cell(&mut self, r: usize, c: usize) {
         if *self.grid[r][c].state() != CellState::Revealed {
             self.grid[r][c].set_state( CellState::Marked(CellMarker::Questioned) );
         }
     }
 
-    /// clears any existing marks on a cell and reverts the cell's state to None (aka unknown)
+
     fn unmark_cell(&mut self, r: usize, c: usize) {
         if *self.grid[r][c].state() != CellState::Revealed {
             self.grid[r][c].set_state( CellState::Unknown);
@@ -221,17 +244,15 @@ impl MineSweeperGame for Game<GridCell> {
         }
     }
 
-    /// checks if the current game is won and returns true else false
-    /// A game is won if all cell containing a mine have been flagged
+
     fn is_game_won(&self) -> bool {
         self.mine_indices()
             .iter()
             .all(|(r,c)| self.grid[*r][*c].is_flagged() )
     }
 
-    /// checks if a game is over and returns true if it is, otherwise returns false
-    /// A game is over once a mined cell has been revealed
-    fn is_game_over(&self) -> bool {
+
+    fn is_game_lost(&self) -> bool {
         self.mine_indices()
             .iter()
             .any(|(r,c)| *self.grid[*r][*c].state() == CellState::Revealed)

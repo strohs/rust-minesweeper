@@ -65,7 +65,7 @@ impl CommandLineDriver<Game<GridCell>> {
                     break
                 }
             }
-            if self.game.is_game_over() {
+            if self.game.is_game_lost() {
                 println!("you hit a mine!");
                 println!("{:?}", self.game);
                 break
