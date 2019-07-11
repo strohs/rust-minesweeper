@@ -9,7 +9,7 @@ use rand::seq::{SliceRandom};
 use crate::grid_cell::{GridCell, MineSweeperCell, CellKind, CellState, CellMarker};
 use std::collections::HashSet;
 
-/// contains the minesweeper grid and elapsed time
+/// holds the minesweeper grid
 pub struct Game<T: MineSweeperCell> {
     grid: Vec<Vec<T>>,
     elapsed_time: u64,
@@ -32,9 +32,10 @@ pub trait MineSweeperGame {
     /// reveals the cell at index r,c
     fn reveal_cell(&mut self, r: usize, c:usize);
 
-    /// reveals all "empty" cells connected to the cell given by the index: r,c
-    /// this essentially does a flood fill reveal of connected empty cells with no adjacent mines
-    fn reveal_connected_cells(&mut self, r: usize, c: usize);
+    /// reveals all "lone" cells that are connected to the cell at index: r,c.
+    /// A lone cell is an `CellKind::Empty` cell with an `adjacent mine count = 0`.
+    /// This method essentially does a flood fill, that reveals connected "lone" cells
+    fn reveal_all_lone_cells(&mut self, r: usize, c: usize);
 
     /// place a flag marker at the cell given by the index: r,c
     fn flag_cell(&mut self, r:usize, c:usize);
@@ -101,7 +102,7 @@ impl Game<GridCell> {
         for nr in rstart..=rend {
             for nc in cstart..=cend {
                 // push all the cells located around index: r,c  into the return vector
-                if nr != r || nc != c {
+                if !(nr == r && nc == c) {
                     ndxs.push((nr, nc));
                 }
             }
@@ -194,12 +195,12 @@ impl MineSweeperGame for Game<GridCell> {
     fn reveal_cell(&mut self, r: usize, c: usize) {
         if *self.grid[r][c].state() != CellState::Revealed {
             self.grid[r][c].set_state( CellState::Revealed );
-            self.reveal_connected_cells(r,c);
+            self.reveal_all_lone_cells(r, c);
         }
     }
 
 
-    fn reveal_connected_cells(&mut self, r: usize, c: usize) {
+    fn reveal_all_lone_cells(&mut self, r: usize, c: usize) {
         let connected_ndxs = self.connected_lone_cell_indices(r, c);
 
         // also reveal all the cells that are adjacent to the lone cells
