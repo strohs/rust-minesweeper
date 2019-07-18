@@ -1,18 +1,17 @@
-use std::fmt::{Debug,Display,Result,Formatter};
+use std::fmt::{Debug, Display, Formatter, Result};
 
-// default characters used for representing a cell's "state" as a char
-const MINE: char        = '\u{25CF}';   // UTF-8 black circle \u{25CF}
-const REVEALED: char    = '0';          // UTF-8 ballot box \u{2610}
-const HIDDEN: char      = '\u{25A1}';   // UTF-8 white square
-const QUESTION: char    = '\u{003F}';   // question mark
-const FLAG: char        = '⚑';         // UTF-8 black flag \u{2691}
-
+// default characters used for debugging and printing game cells
+const MINE: char = '\u{25CF}'; // UTF-8 black circle \u{25CF}
+const REVEALED: char = '0'; // UTF-8 ballot box \u{2610}
+const HIDDEN: char = '\u{25A1}'; // UTF-8 white square
+const QUESTION: char = '\u{003F}'; // question mark
+const FLAG: char = '⚑'; // UTF-8 black flag \u{2691}
 
 #[derive(PartialEq)]
 pub enum CellState {
     Revealed,
     Marked(CellMarker),
-    Unknown
+    Unknown,
 }
 
 #[derive(PartialEq)]
@@ -24,18 +23,17 @@ pub enum CellMarker {
 #[derive(PartialEq)]
 pub enum CellKind {
     Mine,
-    Empty
+    Empty,
 }
 
 #[derive(PartialEq)]
-pub struct GridCell {
+pub struct GameCell {
     state: CellState,
     kind: CellKind,
-    adj_mine_count: u8
+    adj_mine_count: u8,
 }
 
 pub trait MineSweeperCell {
-
     /// return the cells current marker if any, else returns None if the cells is not marked
     fn marker(&self) -> Option<CellMarker>;
 
@@ -67,26 +65,23 @@ pub trait MineSweeperCell {
     fn is_flagged(&self) -> bool;
 }
 
-impl GridCell {
-
+impl GameCell {
     /// create a new empty cell, with CellState::Unknown and adjacent mine count of 0
-    pub fn new(kind :CellKind) -> GridCell {
-        GridCell {
+    pub fn new(kind: CellKind) -> GameCell {
+        GameCell {
             state: CellState::Unknown,
             kind: kind,
             adj_mine_count: 0,
         }
     }
-
 }
 
-impl MineSweeperCell for GridCell {
-
+impl MineSweeperCell for GameCell {
     fn marker(&self) -> Option<CellMarker> {
         match self.state {
             CellState::Marked(CellMarker::Flagged) => Some(CellMarker::Flagged),
             CellState::Marked(CellMarker::Questioned) => Some(CellMarker::Questioned),
-            _ => None
+            _ => None,
         }
     }
 
@@ -129,92 +124,126 @@ impl MineSweeperCell for GridCell {
 
 /// Prints the GridCell and takes into account whether or not the cell has been revealed or marked.
 /// This method is used to display the gridCell during a game of MineSweeper
-impl Display for GridCell {
+impl Display for GameCell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.state {
-            CellState::Revealed => {
-                match self.kind {
-                    CellKind::Mine => MINE,
-                    CellKind::Empty if self.adj_mine_count > 0 => (self.adj_mine_count + 48) as char,
-                    _ => REVEALED,
-                }
+            CellState::Revealed => match self.kind {
+                CellKind::Mine => MINE,
+                CellKind::Empty if self.adj_mine_count > 0 => (self.adj_mine_count + 48) as char,
+                _ => REVEALED,
             },
             CellState::Marked(CellMarker::Flagged) => FLAG,
             CellState::Marked(CellMarker::Questioned) => QUESTION,
-            CellState::Unknown => HIDDEN
+            CellState::Unknown => HIDDEN,
         };
-        write!(f,"{}", cell_char)
+        write!(f, "{}", cell_char)
     }
 }
 
 /// Debug will print the cells "kind". It essentially reveals the cell so that you can
 /// see the mined cells and also check if the mine counts are correct
-impl Debug for GridCell {
+impl Debug for GameCell {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let cell_char = match self.kind {
             CellKind::Mine => MINE,
-            CellKind::Empty => (self.adj_mine_count + 48) as char,  // convert to ascii digit + 48
+            CellKind::Empty => (self.adj_mine_count + 48) as char, // convert to ascii digit + 48
         };
-        write!(f,"{}", cell_char)
+        write!(f, "{}", cell_char)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid_cell::CellKind::Empty;
+    use crate::game_cell::CellKind::Empty;
 
     #[test]
     fn revealed_mined_cell_should_display_as_mine_char() {
-        let mined_cell = GridCell { state: CellState::Revealed, kind: CellKind::Mine, adj_mine_count: 0 };
-        assert_eq!( format!("{}", mined_cell), MINE.to_string() );
+        let mined_cell = GameCell {
+            state: CellState::Revealed,
+            kind: CellKind::Mine,
+            adj_mine_count: 0,
+        };
+        assert_eq!(format!("{}", mined_cell), MINE.to_string());
     }
 
     #[test]
     fn hidden_cell_should_display_as_hidden_char() {
-        let mined_cell = GridCell { state: CellState::Unknown, kind: CellKind::Mine, adj_mine_count: 0 };
-        assert_eq!( format!("{}", mined_cell), HIDDEN.to_string() );
+        let mined_cell = GameCell {
+            state: CellState::Unknown,
+            kind: CellKind::Mine,
+            adj_mine_count: 0,
+        };
+        assert_eq!(format!("{}", mined_cell), HIDDEN.to_string());
     }
 
     #[test]
     fn revealed_empty_cell_with_no_adjacent_mines_should_display_revealed_char() {
-        let cell = GridCell { state: CellState::Revealed, kind: CellKind::Empty, adj_mine_count: 0 };
-        assert_eq!( format!("{}", cell), REVEALED.to_string() );
+        let cell = GameCell {
+            state: CellState::Revealed,
+            kind: CellKind::Empty,
+            adj_mine_count: 0,
+        };
+        assert_eq!(format!("{}", cell), REVEALED.to_string());
     }
 
     #[test]
     fn revealed_empty_cell_with_adjacent_mines_should_display_adj_mine_count() {
-        let cell = GridCell { state: CellState::Revealed, kind: CellKind::Empty, adj_mine_count: 3 };
-        assert_eq!( format!("{}", cell), "3".to_string() );
+        let cell = GameCell {
+            state: CellState::Revealed,
+            kind: CellKind::Empty,
+            adj_mine_count: 3,
+        };
+        assert_eq!(format!("{}", cell), "3".to_string());
     }
 
     #[test]
     fn flagged_cell_displays_the_flag_char() {
-        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 1 };
-        assert_eq!( format!("{}", cell), FLAG.to_string() );
+        let cell = GameCell {
+            state: CellState::Marked(CellMarker::Flagged),
+            kind: CellKind::Empty,
+            adj_mine_count: 1,
+        };
+        assert_eq!(format!("{}", cell), FLAG.to_string());
     }
 
     #[test]
     fn questioned_cell_displays_the_question_char() {
-        let cell = GridCell { state: CellState::Marked(CellMarker::Questioned), kind: CellKind::Empty, adj_mine_count: 1 };
-        assert_eq!( format!("{}", cell), QUESTION.to_string() );
+        let cell = GameCell {
+            state: CellState::Marked(CellMarker::Questioned),
+            kind: CellKind::Empty,
+            adj_mine_count: 1,
+        };
+        assert_eq!(format!("{}", cell), QUESTION.to_string());
     }
 
     #[test]
     fn lone_cell_test_should_return_true_for_empty_cell_with_0_adj_mines() {
-        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 0 };
-        assert!( cell.is_lone_cell() );
+        let cell = GameCell {
+            state: CellState::Marked(CellMarker::Flagged),
+            kind: CellKind::Empty,
+            adj_mine_count: 0,
+        };
+        assert!(cell.is_lone_cell());
     }
 
     #[test]
     fn lone_cell_test_should_return_false_for_empty_cell_with_gt_0_adj_mines() {
-        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Empty, adj_mine_count: 2 };
-        assert_eq!( cell.is_lone_cell(), false );
+        let cell = GameCell {
+            state: CellState::Marked(CellMarker::Flagged),
+            kind: CellKind::Empty,
+            adj_mine_count: 2,
+        };
+        assert_eq!(cell.is_lone_cell(), false);
     }
 
     #[test]
     fn lone_cell_test_should_return_false_for_any_mined_cell() {
-        let cell = GridCell { state: CellState::Marked(CellMarker::Flagged), kind: CellKind::Mine, adj_mine_count: 2 };
-        assert_eq!( cell.is_lone_cell(), false );
+        let cell = GameCell {
+            state: CellState::Marked(CellMarker::Flagged),
+            kind: CellKind::Mine,
+            adj_mine_count: 2,
+        };
+        assert_eq!(cell.is_lone_cell(), false);
     }
 }

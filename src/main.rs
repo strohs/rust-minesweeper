@@ -1,16 +1,14 @@
-mod minesweeper;
-mod grid_cell;
 mod command_line_driver;
+mod game_cell;
+mod minesweeper;
 
-use crate::minesweeper::{Game, MineSweeperGame};
-use crate::command_line_driver::{CommandLineDriver};
-
+use crate::command_line_driver::CommandLineDriver;
+use crate::minesweeper::{GameGrid, MineSweeperGame};
 
 fn main() {
-    let g = Game::init(4, 4);
+    let g = GameGrid::init(4, 4);
     println!("{}", g);
 
-    let mut cla = CommandLineDriver::new( g );
-    cla.start();
-
+    let mut command_driver = CommandLineDriver::new(g);
+    command_driver.start();
 }

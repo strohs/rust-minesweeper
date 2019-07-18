@@ -16,4 +16,4 @@ rand = "0.7"
 # * Paths may start with a crate name, even within submodules.
 # * Paths starting with :: must reference an external crate.
 # * A foo.rs and foo/ subdirectory may coexist; mod.rs is no longer needed when placing submodules in a subdirectory.
-# * Paths in use declarations work the same as other paths.
+# * Paths in `use` declarations work the same as other paths.
