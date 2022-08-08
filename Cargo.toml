@@ -1,8 +1,8 @@
 [package]
-name = "rust-minesweeper"
+name = "rust_minesweeper"
 version = "0.1.0"
 authors = ["strohs <strohs1@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 rand = "0.7"

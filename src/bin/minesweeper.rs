@@ -1,15 +1,15 @@
-use crate::game_cell::{CellMarker, GameCell};
-use crate::minesweeper::{GameGrid, MineSweeperGame};
+//! CommandLineDriver enables a user to play a Mine Sweeper Game via the command line (stdin)
+//!
+//! The user will enter commands using a space separated string in one of the following formats:
+//! * to create a new game with 5 rows and 5 columns: `n 5 5`
+//! * to reveal the square at row 0 column 1: `r 0 1`
+//! * to flag a square at row 2 column 4: `f 2 4`
+//! * to place a question mark on a square at row 1 column 3: `q 1 3`
+
+use rust_minesweeper::mine_sweeper_board::{CellMarker, MineSweeperGame};
+use rust_minesweeper::mine_sweeper_impl::{Cell, Grid};
 use std::io;
 use std::io::{BufRead, BufReader, ErrorKind};
-
-/// enables a user to play a Mine Sweeper Game via the command line (stdin)
-///
-/// The user will enter commands using a space separated string in one of the following formats:
-/// * to create a new game with 5 rows and 5 columns: `n 5 5`
-/// * to reveal the square at row 0 column 1: `r 0 1`
-/// * to flag a square at row 2 column 4: `f 2 4`
-/// * to question a square at row 1 column 3: `q 1 3`
 
 pub struct CommandLineDriver<T: MineSweeperGame> {
     pub game: T,
@@ -25,8 +25,8 @@ pub enum Command {
     Question(usize, usize),
 }
 
-impl CommandLineDriver<GameGrid<GameCell>> {
-    pub fn new(game: GameGrid<GameCell>) -> Self {
+impl CommandLineDriver<Grid<Cell>> {
+    pub fn new(game: Grid<Cell>) -> Self {
         CommandLineDriver { game }
     }
 
@@ -40,7 +40,7 @@ impl CommandLineDriver<GameGrid<GameCell>> {
                         println!("{:?}", &self.game);
                     }
                     Ok(Command::New(r, c)) => {
-                        self.game = GameGrid::init(r, c);
+                        self.game = Grid::init(r, c);
                     }
                     Ok(Command::Flag(r, c)) => self.game.toggle_mark(r, c, CellMarker::Flagged),
                     Ok(Command::Question(r, c)) => {
@@ -73,7 +73,7 @@ impl CommandLineDriver<GameGrid<GameCell>> {
     }
 
     fn read_line() -> io::Result<String> {
-        print!("make a move: \n");
+        println!("make a move:");
         let mut input = String::new();
         let mut br = BufReader::new(io::stdin());
         br.read_line(&mut input)?;
@@ -129,8 +129,8 @@ impl CommandLineDriver<GameGrid<GameCell>> {
             "quit" => Ok(Command::Quit),
             "debug" => Ok(Command::Debug),
             "n" if toks.len() == 3 => {
-                let r = self.parse_int(&toks[1])?;
-                let c = self.parse_int(&toks[2])?;
+                let r = self.parse_int(toks[1])?;
+                let c = self.parse_int(toks[2])?;
                 Ok(Command::New(r, c))
             }
             "r" | "f" | "q" if toks.len() == 3 => self.map_move(toks[0], toks[1], toks[2]),
@@ -140,4 +140,12 @@ impl CommandLineDriver<GameGrid<GameCell>> {
             )),
         }
     }
+}
+
+fn main() {
+    let g = Grid::init(8, 8);
+    println!("{:?}", g);
+
+    let mut command_driver = CommandLineDriver::new(g);
+    command_driver.start();
 }
