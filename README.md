@@ -1,3 +1,6 @@
+![example workflow](https://github.com/strohs/rust-minesweeper/actions/workflows/rust.yml/badge.svg)
+
+
 Rust Minesweeper
 =======================================================
 This is a command line driven minesweeper clone. One of the first Rust programs I wrote.
